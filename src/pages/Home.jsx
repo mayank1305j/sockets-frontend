@@ -7,16 +7,19 @@ const Home = () => {
   const [socket, setSocket] = useState(null);
   const [text, setText] = useState("");
   const [messages, setMessages] = useState([]);
+  const messagesContainerRef = useRef();
 
   useEffect(() => {
-    socket?.on("connect", () => {
-      console.log("Connected:", socket.id);
-    });
+    if (socket) {
+      socket?.on("connect", () => {
+        console.log("Connected:", socket.id);
+      });
 
-    socket?.on("receive-message", (data) => {
-      console.log("Received message:", data);
-      setMessages((prevMessages) => [...prevMessages, data]);
-    });
+      socket?.on("receive-message", (data) => {
+        console.log("Received message:", data);
+        setMessages((prevMessages) => [...prevMessages, data]);
+      });
+    }
 
     return () => {
       if (socket) {
@@ -26,6 +29,20 @@ const Home = () => {
   }, [socket]);
 
   useEffect(() => {
+    // Scroll to the bottom when messages change
+    if (messagesContainerRef.current) {
+      const lastMessage = messagesContainerRef.current.lastChild;
+      if (lastMessage) {
+        lastMessage.scrollIntoView({
+          behavior: "smooth",
+          block: "end",
+          inline: "nearest",
+        });
+      }
+    }
+  }, [messages]);
+
+  useEffect(() => {
     console.log(messages);
   }, [messages]);
 
@@ -33,7 +50,7 @@ const Home = () => {
     e.preventDefault();
 
     if (name.trim() !== "") {
-      const newSocket = io("https://sockets-revision.onrender.com");
+      const newSocket = io(import.meta.env.VITE_SERVER_BASE_URL);
       setSocket(newSocket);
       toast(`Welcome ${name}!`);
     } else {
@@ -52,6 +69,7 @@ const Home = () => {
         { text, name, socketId },
       ]);
       setText("");
+      // window.scrollTo(0, document.body.scrollHeight);
     }
   };
 
@@ -71,6 +89,7 @@ const Home = () => {
           <input
             type="text"
             value={name}
+            placeholder="your name..."
             className="p-2 text-black border border-black rounded focus:outline-none"
             onChange={(e) => setName(e.target.value)}
           />
@@ -87,17 +106,17 @@ const Home = () => {
           socket === null ? "opacity-0 pointer-events-none" : "opacity-100"
         } duration-1000 delay-500 bg-gradient-to-tr from-black to-indigo-800 p-2 w-full min-h-screen`}
       >
-        <div className="p-1 text-center backdrop-blur-sm w-full bg-[#0007] mb-4">
+        <div className="p-1 text-center backdrop-blur-sm w-full bg-[#0007] mb-4 sticky top-0 left-0 z-10">
           logged in as <span className="text-blue-400 uppercase">{name}</span>
         </div>
-        <div className="max-w-3xl mx-auto">
+        <div ref={messagesContainerRef} className="max-w-3xl mx-auto pb-[20vh]">
           {messages.length !== 0 && (
             <AllMessages messages={messages} selfSocketId={socket.id} />
           )}
         </div>
         <form
           onSubmit={handleSendMessage}
-          className="absolute flex gap-2 -translate-x-1/2 bottom-10 left-1/2"
+          className="fixed flex items-center justify-center min-h-[20vh] bg-gradient-to-t from-black w-full gap-2 -translate-x-1/2 bottom-0 left-1/2"
         >
           <input
             type="text"
